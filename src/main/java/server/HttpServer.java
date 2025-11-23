@@ -5,6 +5,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import io.OutputView;
 
@@ -12,14 +14,17 @@ public class HttpServer {
 
     private final HttpRequestParser parser = new HttpRequestParser();
 
+    private final ExecutorService executor = Executors.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors() * 2
+    );
+
     public void start() throws Exception {
         try (ServerSocket serverSocket = new ServerSocket(ServerConfig.DEFAULT_PORT)) {
-
             OutputView.printServerStart(ServerConfig.DEFAULT_PORT);
 
             while (true) {
-                Socket socket = serverSocket.accept();
-                handleClient(socket);
+                Socket clientSocket = serverSocket.accept();
+                executor.submit(() -> handleClient(clientSocket));
             }
         }
     }
