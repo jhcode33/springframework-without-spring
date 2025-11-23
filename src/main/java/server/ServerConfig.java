@@ -22,4 +22,6 @@ public final class ServerConfig {
     // Default Body
     public static final String DEFAULT_BODY =
             "<html><body><h1>Hello, SimpleHttpServer</h1></body></html>";
+
+    public static final String HEADER_SEPARATOR = ":";
 }
