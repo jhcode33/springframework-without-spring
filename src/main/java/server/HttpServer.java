@@ -10,6 +10,8 @@ import io.OutputView;
 
 public class HttpServer {
 
+    private final HttpRequestParser parser = new HttpRequestParser();
+
     public void start() throws Exception {
         try (ServerSocket serverSocket = new ServerSocket(ServerConfig.DEFAULT_PORT)) {
 
@@ -25,12 +27,13 @@ public class HttpServer {
     private void handleClient(Socket clientSocket) {
         try (Socket socket = clientSocket;
              BufferedReader in = new BufferedReader(
-                     new InputStreamReader(socket.getInputStream(), ServerConfig.DEFAULT_CHARSET));
+                     new InputStreamReader(socket.getInputStream(), ServerConfig.DEFAULT_CHARSET)
+             );
              OutputStream out = socket.getOutputStream()) {
 
-            HttpRequest request = receiveRequest(in);
+            HttpRequest request = parser.parse(in);
 
-            HttpResponse response = createResponse();
+            HttpResponse response = createResponse(request);
 
             sendResponse(out, response);
 
@@ -39,40 +42,7 @@ public class HttpServer {
         }
     }
 
-    private HttpRequest receiveRequest(BufferedReader in) throws Exception {
-        HttpRequest request = new HttpRequest();
-
-        String requestLine = in.readLine();
-        if (requestLine == null || requestLine.isEmpty()) {
-            return request;
-        }
-
-        OutputView.printRequestLine(requestLine);
-
-        String[] parts = requestLine.split(" ");
-        request.setMethod(parts[0]);
-        request.setPath(parts[1]);
-        request.setVersion(parts[2]);
-
-        String line = in.readLine();
-        while (line != null && !line.isEmpty()) {
-
-            OutputView.printHeaderLine(line);
-
-            int idx = line.indexOf(ServerConfig.HEADER_SEPARATOR);
-            if (idx != -1) {
-                String key = line.substring(0, idx).trim();
-                String value = line.substring(idx + ServerConfig.HEADER_SEPARATOR.length()).trim();
-                request.addHeader(key, value);
-            }
-
-            line = in.readLine();
-        }
-
-        return request;
-    }
-
-    private HttpResponse createResponse() throws Exception {
+    private HttpResponse createResponse(HttpRequest request) throws Exception {
         byte[] bodyBytes = ServerConfig.DEFAULT_BODY.getBytes(ServerConfig.DEFAULT_CHARSET);
 
         String headers =
