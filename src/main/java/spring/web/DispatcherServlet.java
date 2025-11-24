@@ -1,8 +1,8 @@
 package spring.web;
 
-import server.HttpStatus;
 import server.HttpRequest;
 import server.HttpResponse;
+import server.HttpStatus;
 import server.ServerConfig;
 import spring.ApplicationContext;
 
@@ -10,6 +10,7 @@ public class DispatcherServlet {
 
     private final HandlerMapping handlerMapping;
     private final HandlerAdapter handlerAdapter = new HandlerAdapter();
+    private final ViewResolver viewResolver = new ViewResolver(ServerConfig.DEFAULT_VIEW_PATH, ServerConfig.DEFAULT_VIEW_SUFFIX);
 
     public DispatcherServlet(ApplicationContext applicationContext) {
         this.handlerMapping = new HandlerMapping(applicationContext.getAllBeans());
@@ -18,10 +19,8 @@ public class DispatcherServlet {
     public HttpResponse service(HttpRequest request) {
 
         String path = request.getPath();
-
         HandlerMethod handlerMethod = handlerMapping.getHandler(path);
 
-        // 핸들러가 없는 경우 → 404 응답
         if (handlerMethod == null) {
             return HttpResponse.builder()
                     .status(HttpStatus.NOT_FOUND)
@@ -30,14 +29,32 @@ public class DispatcherServlet {
                     .build();
         }
 
-        // 핸들러 실행
         Object result = handlerAdapter.handle(handlerMethod);
 
-        // 정상 응답
+        if (result instanceof String) {
+            Model model = new Model();
+            String html = viewResolver.resolveView((String) result, model);
+            return HttpResponse.builder()
+                    .status(HttpStatus.OK)
+                    .headers(ServerConfig.HEADER_CONTENT_TYPE)
+                    .body(html)
+                    .build();
+
+        } else if (result instanceof ModelAndView) {
+            ModelAndView mv = (ModelAndView) result;
+            String html = viewResolver.resolveView(mv.getViewName(), mv.getModel());
+            return HttpResponse.builder()
+                    .status(HttpStatus.OK)
+                    .headers(ServerConfig.HEADER_CONTENT_TYPE)
+                    .body(html)
+                    .build();
+        }
+
+        // 기본: 문자열 변환
         return HttpResponse.builder()
                 .status(HttpStatus.OK)
                 .headers(ServerConfig.HEADER_CONTENT_TYPE)
-                .body(ServerConfig.DEFAULT_BODY)
+                .body(result.toString())
                 .build();
     }
 }

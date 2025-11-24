@@ -7,6 +7,8 @@ public final class ServerConfig {
     // Server Settings
     public static final int DEFAULT_PORT = 8080;
     public static final String DEFAULT_CHARSET = "UTF-8";
+    public static final String DEFAULT_VIEW_PATH = "views/";
+    public static final String DEFAULT_VIEW_SUFFIX = ".html";
 
     // HTTP Headers
     public static final String HEADER_CONTENT_TYPE = "Content-Type: text/html; charset=UTF-8\r\n";
