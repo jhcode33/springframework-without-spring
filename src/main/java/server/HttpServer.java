@@ -50,16 +50,16 @@ public class HttpServer {
     private HttpResponse createResponse(HttpRequest request) throws Exception {
         byte[] bodyBytes = ServerConfig.DEFAULT_BODY.getBytes(ServerConfig.DEFAULT_CHARSET);
 
-        String headers =
-                ServerConfig.HEADER_CONTENT_TYPE +
+        String headers = ServerConfig.HEADER_CONTENT_TYPE +
                         ServerConfig.HEADER_CONTENT_LENGTH + bodyBytes.length + ServerConfig.CRLF +
-                        ServerConfig.HEADER_CONNECTION_CLOSE;
+                        ServerConfig.HEADER_CONNECTION_CLOSE +
+                        ServerConfig.CRLF;
 
-        return new HttpResponse(
-                ServerConfig.HTTP_STATUS_200,
-                headers,
-                ServerConfig.DEFAULT_BODY
-        );
+        return HttpResponse.builder()
+                .status(HttpStatus.OK)
+                .headers(headers)
+                .body(ServerConfig.DEFAULT_BODY)
+                .build();
     }
 
     private void sendResponse(OutputStream out, HttpResponse response) throws Exception {
