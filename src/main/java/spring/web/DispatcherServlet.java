@@ -1,5 +1,7 @@
 package spring.web;
 
+import error.DefaultExceptionResolver;
+import error.ExceptionResolver;
 import server.HttpRequest;
 import server.HttpResponse;
 import server.HttpStatus;
@@ -10,51 +12,54 @@ public class DispatcherServlet {
 
     private final HandlerMapping handlerMapping;
     private final HandlerAdapter handlerAdapter = new HandlerAdapter();
-    private final ViewResolver viewResolver = new ViewResolver(ServerConfig.DEFAULT_VIEW_PATH, ServerConfig.DEFAULT_VIEW_SUFFIX);
+    private final ExceptionResolver exceptionResolver = new DefaultExceptionResolver();
+    private final ViewResolver viewResolver = new ViewResolver("views/", ".html");
 
     public DispatcherServlet(ApplicationContext applicationContext) {
         this.handlerMapping = new HandlerMapping(applicationContext.getAllBeans());
     }
 
     public HttpResponse service(HttpRequest request) {
+        try {
+            String path = request.getPath();
+            HandlerMethod handlerMethod = handlerMapping.getHandler(path);
 
-        String path = request.getPath();
-        HandlerMethod handlerMethod = handlerMapping.getHandler(path);
+            if (handlerMethod == null) {
+                return HttpResponse.builder()
+                        .status(HttpStatus.NOT_FOUND)
+                        .headers(ServerConfig.HEADER_CONTENT_TYPE)
+                        .body(ServerConfig.DEFAULT_BODY)
+                        .build();
+            }
 
-        if (handlerMethod == null) {
-            return HttpResponse.builder()
-                    .status(HttpStatus.NOT_FOUND)
-                    .headers(ServerConfig.HEADER_CONTENT_TYPE)
-                    .body(ServerConfig.DEFAULT_BODY)
-                    .build();
-        }
+            Object result = handlerAdapter.handle(handlerMethod);
 
-        Object result = handlerAdapter.handle(handlerMethod);
+            // Controller가 문자열 또는 ModelAndView 반환
+            if (result instanceof String) {
+                String html = viewResolver.resolveView((String) result, new Model());
+                return HttpResponse.builder()
+                        .status(HttpStatus.OK)
+                        .headers(ServerConfig.HEADER_CONTENT_TYPE)
+                        .body(html)
+                        .build();
+            } else if (result instanceof ModelAndView) {
+                ModelAndView mv = (ModelAndView) result;
+                String html = viewResolver.resolveView(mv.getViewName(), mv.getModel());
+                return HttpResponse.builder()
+                        .status(HttpStatus.OK)
+                        .headers(ServerConfig.HEADER_CONTENT_TYPE)
+                        .body(html)
+                        .build();
+            }
 
-        if (result instanceof String) {
-            Model model = new Model();
-            String html = viewResolver.resolveView((String) result, model);
             return HttpResponse.builder()
                     .status(HttpStatus.OK)
                     .headers(ServerConfig.HEADER_CONTENT_TYPE)
-                    .body(html)
+                    .body(result.toString())
                     .build();
 
-        } else if (result instanceof ModelAndView) {
-            ModelAndView mv = (ModelAndView) result;
-            String html = viewResolver.resolveView(mv.getViewName(), mv.getModel());
-            return HttpResponse.builder()
-                    .status(HttpStatus.OK)
-                    .headers(ServerConfig.HEADER_CONTENT_TYPE)
-                    .body(html)
-                    .build();
+        } catch (Exception e) {
+            return exceptionResolver.resolveException(e);
         }
-
-        // 기본: 문자열 변환
-        return HttpResponse.builder()
-                .status(HttpStatus.OK)
-                .headers(ServerConfig.HEADER_CONTENT_TYPE)
-                .body(result.toString())
-                .build();
     }
 }
