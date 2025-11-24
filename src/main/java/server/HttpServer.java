@@ -59,7 +59,6 @@ public class HttpServer {
 
             HttpRequest request = parser.parse(in);
 
-            // DispatcherServlet에 요청을 전달
             HttpResponse response = dispatcherServlet.service(request);
 
             sendResponse(out, response);

@@ -13,7 +13,7 @@ public class DispatcherServlet {
     private final HandlerMapping handlerMapping;
     private final HandlerAdapter handlerAdapter = new HandlerAdapter();
     private final ExceptionResolver exceptionResolver = new DefaultExceptionResolver();
-    private final ViewResolver viewResolver = new ViewResolver("views/", ".html");
+    private final ViewResolver viewResolver = new ViewResolver(ServerConfig.DEFAULT_VIEW_PATH, ServerConfig.DEFAULT_VIEW_SUFFIX);
 
     public DispatcherServlet(ApplicationContext applicationContext) {
         this.handlerMapping = new HandlerMapping(applicationContext.getAllBeans());
@@ -34,7 +34,6 @@ public class DispatcherServlet {
 
             Object result = handlerAdapter.handle(handlerMethod);
 
-            // Controller가 문자열 또는 ModelAndView 반환
             if (result instanceof String) {
                 String html = viewResolver.resolveView((String) result, new Model());
                 return HttpResponse.builder()
@@ -42,6 +41,7 @@ public class DispatcherServlet {
                         .headers(ServerConfig.HEADER_CONTENT_TYPE)
                         .body(html)
                         .build();
+
             } else if (result instanceof ModelAndView) {
                 ModelAndView mv = (ModelAndView) result;
                 String html = viewResolver.resolveView(mv.getViewName(), mv.getModel());
