@@ -8,9 +8,6 @@ public final class ServerConfig {
     public static final int DEFAULT_PORT = 8080;
     public static final String DEFAULT_CHARSET = "UTF-8";
 
-    // HTTP Response Status
-    public static final String HTTP_STATUS_200 = "HTTP/1.1 200 OK\r\n";
-
     // HTTP Headers
     public static final String HEADER_CONTENT_TYPE = "Content-Type: text/html; charset=UTF-8\r\n";
     public static final String HEADER_CONTENT_LENGTH = "Content-Length: ";
