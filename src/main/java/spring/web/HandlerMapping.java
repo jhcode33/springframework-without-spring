@@ -1,6 +1,7 @@
 package spring.web;
 
 import spring.annotation.Controller;
+import spring.annotation.GetMapping;
 import spring.annotation.RequestMapping;
 
 import java.lang.reflect.Method;
@@ -22,14 +23,24 @@ public class HandlerMapping {
 
             Method[] methods = clazz.getDeclaredMethods();
             for (Method method : methods) {
+
+                // RequestMapping 처리
                 if (method.isAnnotationPresent(RequestMapping.class)) {
                     RequestMapping mapping = method.getAnnotation(RequestMapping.class);
+                    String path = mapping.value();
+                    handlerMap.put(path, new HandlerMethod(bean, method));
+                }
+
+                // GetMapping 처리
+                if (method.isAnnotationPresent(GetMapping.class)) {
+                    GetMapping mapping = method.getAnnotation(GetMapping.class);
                     String path = mapping.value();
                     handlerMap.put(path, new HandlerMethod(bean, method));
                 }
             }
         }
     }
+
 
     public HandlerMethod getHandler(String path) {
         return handlerMap.get(path);
