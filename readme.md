@@ -130,12 +130,3 @@
 - [ ] Logging 기능 구현 (요청, 응답, 예외)
 
 ---
-
-### 8. 추가 학습 및 확장 목표
-
-- [ ] AOP의 기본 원리 (Proxy 기반 메서드 실행 전후 로직 주입)
-- [ ] 간단한 Bean Lifecycle 이벤트 구현 (init/destroy 메서드 호출)
-- [ ] Session 관리 및 Cookie 처리 (선택 구현)
-- [ ] 정적 자원 응답 (HTML, CSS, JS 파일 서빙)
-
----
