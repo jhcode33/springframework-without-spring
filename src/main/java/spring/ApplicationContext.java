@@ -6,9 +6,14 @@ import spring.annotation.Repository;
 
 import java.beans.Introspector;
 import java.io.File;
+import java.io.IOException;
+import java.net.JarURLConnection;
 import java.net.URL;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 /**
  * ApplicationContext
@@ -79,23 +84,15 @@ public class ApplicationContext {
      * @param basePackage 스캔할 패키지 이름
      */
     public void registerPackage(String basePackage) {
-        File dir = getPackageDirectory(basePackage);
-        if (dir == null) return;
-        scanDirectory(dir, basePackage);
-    }
-
-    /**
-     * 패키지 이름을 실제 디렉토리로 변환
-     *
-     * @param packageName 패키지 이름
-     * @return 디렉토리 객체 또는 null
-     */
-    private File getPackageDirectory(String packageName) {
-        String path = packageName.replace('.', '/');
+        String path = basePackage.replace('.', '/');
         URL url = Thread.currentThread().getContextClassLoader().getResource(path);
-        if (url == null) return null;
-        File dir = new File(url.getFile());
-        return dir.isDirectory() ? dir : null;
+        if (url == null) return;
+
+        if (url.getProtocol().equals("file")) {
+            scanDirectory(new File(url.getFile()), basePackage);
+        } else if (url.getProtocol().equals("jar")) {
+            scanJar(url, path);
+        }
     }
 
     /**
@@ -110,37 +107,57 @@ public class ApplicationContext {
 
         for (File file : files) {
             if (file.isDirectory()) {
-                scanSubDirectory(file, packageName);
+                scanDirectory(file, packageName + "." + file.getName());
             } else if (file.getName().endsWith(".class")) {
-                registerClass(packageName, file);
+                registerClass(packageName + "." + file.getName().replace(".class", ""));
             }
         }
     }
 
     /**
-     * 하위 디렉토리 스캔
+     * JAR 파일 스캔
      *
-     * @param dir         하위 디렉토리 객체
-     * @param packageName 부모 패키지 이름
+     * @param url  JAR URL
+     * @param path JAR 내부 경로
      */
-    private void scanSubDirectory(File dir, String packageName) {
-        String subPackage = packageName + "." + dir.getName();
-        scanDirectory(dir, subPackage);
+    private void scanJar(URL url, String path) {
+        try {
+            JarURLConnection conn = (JarURLConnection) url.openConnection();
+            try (JarFile jar = conn.getJarFile()) {
+                scanJarEntries(jar, path);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
-     * 클래스 파일을 로드하고 Bean으로 등록
+     * JAR 엔트리에서 클래스 추출 및 등록
      *
-     * @param packageName 패키지 이름
-     * @param file        클래스 파일 객체
+     * @param jar  JarFile 객체
+     * @param path JAR 내부 경로
      */
-    private void registerClass(String packageName, File file) {
-        String className = packageName + "." + file.getName().replace(".class", "");
+    private void scanJarEntries(JarFile jar, String path) {
+        Enumeration<JarEntry> entries = jar.entries();
+        while (entries.hasMoreElements()) {
+            JarEntry entry = entries.nextElement();
+            if (!entry.isDirectory() && entry.getName().startsWith(path) && entry.getName().endsWith(".class")) {
+                registerClass(entry.getName().replace('/', '.').replace(".class", ""));
+            }
+        }
+    }
+
+    /**
+     * 클래스 로드 후 Bean 등록
+     *
+     * @param className 클래스 FQN
+     */
+    private void registerClass(String className) {
         try {
             Class<?> clazz = Class.forName(className);
-            if (clazz.isAnnotationPresent(Controller.class) ||
-                    clazz.isAnnotationPresent(Service.class) ||
-                    clazz.isAnnotationPresent(Repository.class)) {
+            if (clazz.isAnnotationPresent(Controller.class)
+                    || clazz.isAnnotationPresent(Service.class)
+                    || clazz.isAnnotationPresent(Repository.class)) {
 
                 Object instance = clazz.getDeclaredConstructor().newInstance();
                 String beanName = Introspector.decapitalize(clazz.getSimpleName());
