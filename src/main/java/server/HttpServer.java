@@ -9,15 +9,33 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import io.OutputView;
+import spring.web.DispatcherServlet;
 
+/**
+ * 간단한 HTTP 서버
+ * - 멀티스레드 처리
+ * - DispatcherServlet과 연동하여 동적 요청 처리
+ */
 public class HttpServer {
 
     private final HttpRequestParser parser = new HttpRequestParser();
-
+    private final DispatcherServlet dispatcherServlet;
     private final ExecutorService executor = Executors.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors() * 2
     );
 
+    /**
+     * DispatcherServlet과 연동하는 생성자
+     * @param dispatcherServlet 요청 처리를 위임할 DispatcherServlet
+     */
+    public HttpServer(DispatcherServlet dispatcherServlet) {
+        this.dispatcherServlet = dispatcherServlet;
+    }
+
+    /**
+     * 서버 기동
+     * @throws Exception
+     */
     public void start() throws Exception {
         try (ServerSocket serverSocket = new ServerSocket(ServerConfig.DEFAULT_PORT)) {
             OutputView.printServerStart(ServerConfig.DEFAULT_PORT);
@@ -29,6 +47,9 @@ public class HttpServer {
         }
     }
 
+    /**
+     * 클라이언트 요청 처리
+     */
     private void handleClient(Socket clientSocket) {
         try (Socket socket = clientSocket;
              BufferedReader in = new BufferedReader(
@@ -38,7 +59,8 @@ public class HttpServer {
 
             HttpRequest request = parser.parse(in);
 
-            HttpResponse response = createResponse(request);
+            // DispatcherServlet에 요청을 전달
+            HttpResponse response = dispatcherServlet.service(request);
 
             sendResponse(out, response);
 
@@ -47,28 +69,12 @@ public class HttpServer {
         }
     }
 
-    private HttpResponse createResponse(HttpRequest request) throws Exception {
-        byte[] bodyBytes = ServerConfig.DEFAULT_BODY.getBytes(ServerConfig.DEFAULT_CHARSET);
-
-        String headers = ServerConfig.HEADER_CONTENT_TYPE +
-                        ServerConfig.HEADER_CONTENT_LENGTH + bodyBytes.length + ServerConfig.CRLF +
-                        ServerConfig.HEADER_CONNECTION_CLOSE +
-                        ServerConfig.CRLF;
-
-        return HttpResponse.builder()
-                .status(HttpStatus.OK)
-                .headers(headers)
-                .body(ServerConfig.DEFAULT_BODY)
-                .build();
-    }
-
+    /**
+     * HTTP 응답 전송
+     */
     private void sendResponse(OutputStream out, HttpResponse response) throws Exception {
         String raw = response.toRawResponse();
         out.write(raw.getBytes(ServerConfig.DEFAULT_CHARSET));
         out.flush();
-    }
-
-    public static void main(String[] args) throws Exception {
-        new HttpServer().start();
     }
 }
